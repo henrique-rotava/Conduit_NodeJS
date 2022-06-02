@@ -79,7 +79,7 @@ module.exports.getAllComments = async (req, res) => {
             ]
         });
 
-        res.status(201).json({ comments });
+        res.status(200).json({ comments });
     } catch (e) {
         const code = res.statusCode ? res.statusCode : 422;
         return res.status(code).json({
