@@ -3,6 +3,7 @@ const User = require('../models/User');
 const Tag = require('../models/Tag');
 const { slugify } = require('../utils/stringUtil');
 const sequelize = require('../database');
+const { QueryTypes } = require('sequelize');
 
 function sanitizeOutput(article, user) {
     const newTagList = [];
@@ -279,8 +280,11 @@ module.exports.getFeed = async (req, res) => {
         const query = `
             SELECT UserEmail
             FROM followers
-            WHERE followerEmail = "${req.user.email}"`;
-        const followingUsers = await sequelize.query(query);
+            WHERE followerEmail = :email`;
+        const followingUsers = await sequelize.query(query, {
+            replacements: { email: req.user.email },
+            type: QueryTypes.SELECT
+        });
         if (followingUsers[0].length == 0) {
             return res.json({ articles: [] });
         }
