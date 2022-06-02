@@ -1,4 +1,3 @@
-const { databaseVersion } = require('../dbConnection');
 const User = require('../models/User');
 const { hashPassword, matchPassword } = require('../utils/password');
 const { sign, decode } = require('../utils/jwt');

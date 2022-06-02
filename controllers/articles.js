@@ -2,7 +2,7 @@ const Article = require('../models/Article');
 const User = require('../models/User');
 const Tag = require('../models/Tag');
 const { slugify } = require('../utils/stringUtil');
-const sequelize = require('../dbConnection');
+const sequelize = require('../database');
 
 function sanitizeOutput(article, user) {
     const newTagList = [];
@@ -69,9 +69,9 @@ module.exports.createArticle = async (req, res) => {
                 let newTag;
                 if (!tagExists) {
                     newTag = await Tag.create({ name: t });
-                    article.addTag(newTag);
+                    await article.addTag(newTag);
                 } else {
-                    article.addTag(tagExists);
+                    await article.addTag(tagExists);
                 }
             }
         }
@@ -254,7 +254,22 @@ module.exports.getAllArticles = async (req, res) => {
     } catch (e) {
         const code = res.statusCode ? res.statusCode : 422;
         return res.status(code).json({
-            errors: { body: ['Could not create article', e.message] }
+            errors: { body: ['Could not get articles', e.message] }
+        });
+    }
+};
+
+module.exports.getMatureNews = async (req, res, next) => {
+    try {
+        const articles = await Article.findAll({
+            where: { isMatureContent: true },
+            order: [['createdAt', 'DESC']],
+            limit: 10
+        });
+        res.json({ articles });
+    } catch (e) {
+        return res.status(500).json({
+            errors: { body: ['Could not get news'] }
         });
     }
 };

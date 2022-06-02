@@ -1,5 +1,7 @@
 const { DataTypes } = require('sequelize');
-const sequelize = require('../dbConnection');
+const sequelize = require('../database');
+const Tag = require('./Tag');
+const Comment = require('./Comments');
 
 const Article = sequelize.define('Article', {
     slug: {
@@ -23,5 +25,11 @@ const Article = sequelize.define('Article', {
         defaultValue: false
     }
 });
+
+Article.belongsToMany(Tag, { through: 'TagList', uniqueKey: false, timestamps: false });
+Tag.belongsToMany(Article, { through: 'TagList', uniqueKey: false, timestamps: false });
+
+Article.hasMany(Comment, { onDelete: 'CASCADE' });
+Comment.belongsTo(Article);
 
 module.exports = Article;

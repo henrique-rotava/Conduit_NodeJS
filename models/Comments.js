@@ -1,5 +1,5 @@
 const { DataTypes } = require('sequelize');
-const sequelize = require('../dbConnection');
+const sequelize = require('../database');
 
 const Comment = sequelize.define('Comment', {
     body: {
