@@ -5,7 +5,7 @@
     "main": "index.js",
     "scripts": {
         "test": "NODE_ENV=test jest",
-        "start": "nodemon index.js",
+        "start": "NODE_ENV=development nodemon index.js",
         "prettify": "prettier '**/*.{js,json}' --write"
     },
     "repository": {
