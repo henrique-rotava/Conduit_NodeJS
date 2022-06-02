@@ -44,8 +44,8 @@ function sanitizeOutputMultiple(article) {
 
 module.exports.createArticle = async (req, res) => {
     try {
-        if (!req.body.article) throw new Error('No articles data');
         const data = req.body.article;
+        if (!data) throw new Error('No articles data');
         if (!data.title) throw new Error('Article title is required');
         if (!data.body) throw new Error('Article body is required');
         if (!data.description) throw new Error('Article description is required');
@@ -59,6 +59,7 @@ module.exports.createArticle = async (req, res) => {
             title: data.title,
             description: data.description,
             body: data.body,
+            isMatureContent: data.isMatureContent,
             UserEmail: user.email
         });
 
@@ -88,8 +89,6 @@ module.exports.createArticle = async (req, res) => {
 module.exports.getSingleArticleBySlug = async (req, res) => {
     try {
         const { slug } = req.params;
-        console.log('HEllo');
-        console.log(slug);
         let article = await Article.findByPk(slug, { include: Tag });
 
         const user = await article.getUser();
@@ -127,8 +126,15 @@ module.exports.updateArticle = async (req, res) => {
         const description = data.description ? data.description : article.description;
         const body = data.body ? data.body : article.body;
         const slug = data.title ? slugify(title) : slugInfo;
+        const isMatureContent = data.isMatureContent ?? article.isMatureContent;
 
-        const updatedArticle = await article.update({ slug, title, description, body });
+        const updatedArticle = await article.update({
+            slug,
+            title,
+            description,
+            body,
+            isMatureContent
+        });
 
         article = sanitizeOutput(updatedArticle, user);
         res.status(200).json({ article });

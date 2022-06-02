@@ -17,23 +17,11 @@ const Article = sequelize.define('Article', {
     body: {
         type: DataTypes.TEXT,
         allowNull: false
+    },
+    isMatureContent: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false
     }
 });
 
 module.exports = Article;
-
-/* {
-  "article": {
-    
-    
-    "tagList": ["dragons", "training"],
-    "favorited": false,
-    "favoritesCount": 0,
-    "author": {
-      "username": "jake",
-      "bio": "I work at statefarm",
-      "image": "https://i.stack.imgur.com/xHWG8.jpg",
-      "following": false
-    }
-  }
-} */
