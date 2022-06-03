@@ -256,20 +256,19 @@ module.exports.getMatureNews = async (req, res, next) => {
 
 module.exports.getFeed = async (req, res, next) => {
     try {
-        const query = `
-            SELECT UserEmail
-            FROM followers
-            WHERE followerEmail = :email`;
+        const query = `SELECT "UserEmail"
+            FROM "Followers"
+            WHERE "followerEmail" = :email`;
         const followingUsers = await sequelize.query(query, {
             replacements: { email: req.user.email },
             type: QueryTypes.SELECT
         });
 
-        if (followingUsers[0].length === 0) {
+        if (followingUsers.length === 0) {
             return res.json({ articles: [] });
         }
 
-        let followingUserEmail = followingUsers[0].map((follow) => follow.UserEmail);
+        let followingUserEmail = followingUsers.map((follow) => follow.UserEmail);
 
         let article = await Article.findAll({
             where: {
