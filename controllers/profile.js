@@ -1,6 +1,7 @@
 const User = require('../models/User');
+const { APIError } = require('../utils/error');
 
-module.exports.follow = async (req, res) => {
+module.exports.follow = async (req, res, next) => {
     try {
         const name = req.params.username;
         const userToFollow = await User.findOne({
@@ -10,8 +11,7 @@ module.exports.follow = async (req, res) => {
         });
 
         if (!userToFollow) {
-            res.status(404);
-            throw new Error('User with this username not found');
+            throw new APIError(404, 'User with this username not found');
         }
 
         const user = await User.findByPk(req.user.email);
@@ -25,14 +25,11 @@ module.exports.follow = async (req, res) => {
         };
         res.status(200).json({ profile });
     } catch (e) {
-        const code = res.statusCode ? res.statusCode : 422;
-        return res.status(code).json({
-            errors: { body: [e.message] }
-        });
+        next(e);
     }
 };
 
-module.exports.unfollow = async (req, res) => {
+module.exports.unfollow = async (req, res, next) => {
     try {
         const name = req.params.username;
         const userToFollow = await User.findOne({
@@ -42,8 +39,7 @@ module.exports.unfollow = async (req, res) => {
         });
 
         if (!userToFollow) {
-            res.status(404);
-            throw new Error('User with this username not found');
+            throw new APIError(404, 'User with this username not found');
         }
 
         const user = await User.findByPk(req.user.email);
@@ -57,14 +53,11 @@ module.exports.unfollow = async (req, res) => {
         };
         res.status(200).json({ profile });
     } catch (e) {
-        const code = res.statusCode ? res.statusCode : 422;
-        return res.status(code).json({
-            errors: { body: [e.message] }
-        });
+        next(e);
     }
 };
 
-module.exports.getFollowers = async (req, res) => {
+module.exports.getFollowers = async (req, res, next) => {
     try {
         const name = req.params.username;
         const userToFollow = await User.findOne({
@@ -75,8 +68,7 @@ module.exports.getFollowers = async (req, res) => {
         });
 
         if (!userToFollow) {
-            res.status(404);
-            throw new Error('User with this username not found');
+            throw new APIError(404, 'User with this username not found');
         }
 
         let followingUser = false;
@@ -97,9 +89,6 @@ module.exports.getFollowers = async (req, res) => {
         };
         res.status(200).json({ profile });
     } catch (e) {
-        const code = res.statusCode ? res.statusCode : 422;
-        return res.status(code).json({
-            errors: { body: [e.message] }
-        });
+        next(e);
     }
 };

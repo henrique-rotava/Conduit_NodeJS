@@ -1,15 +1,6 @@
 module.exports.slugify = (title) => {
-    let slugArr = [];
-
-    for (let i = 0; i < title.length; i++) {
-        if (i >= 30) break;
-
-        let char = title[i].toLowerCase();
-        if (char >= 'a' && char <= 'z') slugArr.push(char);
-        else slugArr.push('-');
-    }
-
-    return slugArr.join('');
+    return title
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, '-')
+        .replace(/--{1,}/g, '-');
 };
-
-/* console.log(slugify("This is a really really looooooong title here.")) */

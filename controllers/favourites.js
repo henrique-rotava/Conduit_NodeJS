@@ -1,6 +1,7 @@
 const User = require('../models/User');
 const Article = require('../models/Article');
 const Tag = require('../models/Tag');
+const { APIError } = require('../utils/error');
 
 function sanitizeOutput(article, user, count) {
     const newTagList = [];
@@ -20,12 +21,11 @@ function sanitizeOutput(article, user, count) {
     }
 }
 
-module.exports.addFavourite = async (req, res) => {
+module.exports.addFavourite = async (req, res, next) => {
     try {
         let article = await Article.findByPk(req.params.slug, { include: Tag });
         if (!article) {
-            res.status(404);
-            throw new Error('Article not found');
+            throw new APIError(404, 'Article not found');
         }
         await article.addUsers(req.user.email);
         const user = await article.getUser();
@@ -33,19 +33,15 @@ module.exports.addFavourite = async (req, res) => {
         article = sanitizeOutput(article, user, count);
         res.json(article);
     } catch (e) {
-        const code = res.statusCode ? res.statusCode : 422;
-        return res.status(code).json({
-            errors: { body: [e.message] }
-        });
+        next(e);
     }
 };
 
-module.exports.removeFavourite = async (req, res) => {
+module.exports.removeFavourite = async (req, res, next) => {
     try {
         let article = await Article.findByPk(req.params.slug, { include: Tag });
         if (!article) {
-            res.status(404);
-            throw new Error('Article not found');
+            throw new APIError(404, 'Article not found');
         }
         await article.removeUsers(req.user.email);
         const user = await article.getUser();
@@ -53,9 +49,6 @@ module.exports.removeFavourite = async (req, res) => {
         article = sanitizeOutput(article, user, count);
         res.json(article);
     } catch (e) {
-        const code = res.statusCode ? res.statusCode : 422;
-        return res.status(code).json({
-            errors: { body: [e.message] }
-        });
+        next(e);
     }
 };

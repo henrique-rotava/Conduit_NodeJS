@@ -2,7 +2,9 @@ const Article = require('../models/Article');
 const User = require('../models/User');
 const Tag = require('../models/Tag');
 const { slugify } = require('../utils/stringUtil');
-const sequelize = require('../dbConnection');
+const sequelize = require('../database');
+const { QueryTypes } = require('sequelize');
+const { APIError } = require('../utils/error');
 
 function sanitizeOutput(article, user) {
     const newTagList = [];
@@ -42,13 +44,13 @@ function sanitizeOutputMultiple(article) {
     return article;
 }
 
-module.exports.createArticle = async (req, res) => {
+module.exports.createArticle = async (req, res, next) => {
     try {
-        if (!req.body.article) throw new Error('No articles data');
         const data = req.body.article;
-        if (!data.title) throw new Error('Article title is required');
-        if (!data.body) throw new Error('Article body is required');
-        if (!data.description) throw new Error('Article description is required');
+        if (!data) throw new APIError(422, 'No articles data');
+        if (!data.title) throw new APIError(422, 'Article title is required');
+        if (!data.body) throw new APIError(422, 'Article body is required');
+        if (!data.description) throw new APIError(422, 'Article description is required');
 
         //Find out author object
         const user = await User.findByPk(req.user.email);
@@ -59,6 +61,7 @@ module.exports.createArticle = async (req, res) => {
             title: data.title,
             description: data.description,
             body: data.body,
+            isMatureContent: data.isMatureContent,
             UserEmail: user.email
         });
 
@@ -68,9 +71,9 @@ module.exports.createArticle = async (req, res) => {
                 let newTag;
                 if (!tagExists) {
                     newTag = await Tag.create({ name: t });
-                    article.addTag(newTag);
+                    await article.addTag(newTag);
                 } else {
-                    article.addTag(tagExists);
+                    await article.addTag(tagExists);
                 }
             }
         }
@@ -79,18 +82,17 @@ module.exports.createArticle = async (req, res) => {
         article = sanitizeOutput(article, user);
         res.status(201).json({ article });
     } catch (e) {
-        return res.status(422).json({
-            errors: { body: ['Could not create article', e.message] }
-        });
+        next(e);
     }
 };
 
-module.exports.getSingleArticleBySlug = async (req, res) => {
+module.exports.getSingleArticleBySlug = async (req, res, next) => {
     try {
         const { slug } = req.params;
-        console.log('HEllo');
-        console.log(slug);
         let article = await Article.findByPk(slug, { include: Tag });
+        if (!article) {
+            throw new APIError(404, 'Article not found');
+        }
 
         const user = await article.getUser();
 
@@ -98,13 +100,11 @@ module.exports.getSingleArticleBySlug = async (req, res) => {
 
         res.status(200).json({ article });
     } catch (e) {
-        return res.status(422).json({
-            errors: { body: ['Could not get article', e.message] }
-        });
+        next(e);
     }
 };
 
-module.exports.updateArticle = async (req, res) => {
+module.exports.updateArticle = async (req, res, next) => {
     try {
         if (!req.body.article) throw new Error('No articles data');
         const data = req.body.article;
@@ -112,65 +112,61 @@ module.exports.updateArticle = async (req, res) => {
         let article = await Article.findByPk(slugInfo, { include: Tag });
 
         if (!article) {
-            res.status(404);
-            throw new Error('Article not found');
+            throw new APIError(404, 'Article not found');
         }
 
         const user = await User.findByPk(req.user.email);
 
         if (user.email != article.UserEmail) {
-            res.status(403);
-            throw new Error('You must be the author to modify this article');
+            throw new APIError(403, 'You must be the author to modify this article');
         }
 
         const title = data.title ? data.title : article.title;
         const description = data.description ? data.description : article.description;
         const body = data.body ? data.body : article.body;
         const slug = data.title ? slugify(title) : slugInfo;
+        const isMatureContent = data.isMatureContent ?? article.isMatureContent;
 
-        const updatedArticle = await article.update({ slug, title, description, body });
+        const updatedArticle = await article.update({
+            slug,
+            title,
+            description,
+            body,
+            isMatureContent
+        });
 
         article = sanitizeOutput(updatedArticle, user);
         res.status(200).json({ article });
     } catch (e) {
-        const code = res.statusCode ? res.statusCode : 422;
-        return res.status(code).json({
-            errors: { body: ['Could not update article', e.message] }
-        });
+        next(e);
     }
 };
 
-module.exports.deleteArticle = async (req, res) => {
+module.exports.deleteArticle = async (req, res, next) => {
     try {
         const slugInfo = req.params.slug;
         let article = await Article.findByPk(slugInfo, { include: Tag });
 
         if (!article) {
-            res.status(404);
-            throw new Error('Article not found');
+            throw new APIError(404, 'Article not found');
         }
 
         const user = await User.findByPk(req.user.email);
 
         if (user.email != article.UserEmail) {
-            res.status(403);
-            throw new Error('You must be the author to modify this article');
+            throw new APIError(403, 'You must be the author to modify this article');
         }
 
         await Article.destroy({ where: { slug: slugInfo } });
         res.status(200).json({ message: 'Article deleted successfully' });
     } catch (e) {
-        const code = res.statusCode ? res.statusCode : 422;
-        return res.status(code).json({
-            errors: { body: ['Could not delete article', e.message] }
-        });
+        next(e);
     }
 };
 
-module.exports.getAllArticles = async (req, res) => {
+module.exports.getAllArticles = async (req, res, next) => {
     try {
         //Get all articles:
-
         const { tag, author, limit = 20, offset = 0 } = req.query;
         let article;
         if (!author && tag) {
@@ -238,35 +234,41 @@ module.exports.getAllArticles = async (req, res) => {
                 offset: parseInt(offset)
             });
         }
-        let articles = [];
-        for (let t of article) {
-            let addArt = sanitizeOutputMultiple(t);
-            articles.push(addArt);
-        }
-
+        let articles = article.map(sanitizeOutputMultiple);
         res.json({ articles });
     } catch (e) {
-        const code = res.statusCode ? res.statusCode : 422;
-        return res.status(code).json({
-            errors: { body: ['Could not create article', e.message] }
-        });
+        next(e);
     }
 };
 
-module.exports.getFeed = async (req, res) => {
+module.exports.getMatureNews = async (req, res, next) => {
     try {
-        const query = `
-            SELECT UserEmail
-            FROM followers
-            WHERE followerEmail = "${req.user.email}"`;
-        const followingUsers = await sequelize.query(query);
-        if (followingUsers[0].length == 0) {
+        const articles = await Article.findAll({
+            where: { isMatureContent: true },
+            order: [['createdAt', 'DESC']],
+            limit: 10
+        });
+        res.json({ articles });
+    } catch (e) {
+        next(e);
+    }
+};
+
+module.exports.getFeed = async (req, res, next) => {
+    try {
+        const query = `SELECT "UserEmail"
+            FROM "Followers"
+            WHERE "followerEmail" = :email`;
+        const followingUsers = await sequelize.query(query, {
+            replacements: { email: req.user.email },
+            type: QueryTypes.SELECT
+        });
+
+        if (followingUsers.length === 0) {
             return res.json({ articles: [] });
         }
-        let followingUserEmail = [];
-        for (let t of followingUsers[0]) {
-            followingUserEmail.push(t.UserEmail);
-        }
+
+        let followingUserEmail = followingUsers.map((follow) => follow.UserEmail);
 
         let article = await Article.findAll({
             where: {
@@ -275,17 +277,9 @@ module.exports.getFeed = async (req, res) => {
             include: [Tag, User]
         });
 
-        let articles = [];
-        for (let t of article) {
-            let addArt = sanitizeOutputMultiple(t);
-            articles.push(addArt);
-        }
-
+        let articles = article.map(sanitizeOutputMultiple);
         res.json({ articles });
     } catch (e) {
-        const code = res.statusCode ? res.statusCode : 422;
-        return res.status(code).json({
-            errors: { body: ['Could not get feed ', e.message] }
-        });
+        next(e);
     }
 };

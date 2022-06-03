@@ -1,27 +1,25 @@
 const Article = require('../models/Article');
 const User = require('../models/User');
 const Comment = require('../models/Comments');
+const { APIError } = require('../utils/error');
 
-module.exports.postNewComment = async (req, res) => {
+module.exports.postNewComment = async (req, res, next) => {
     try {
         const slugInfo = req.params.slug;
         const data = req.body.comment;
         //Throw error if no data
         if (!data) {
-            res.status(422);
-            throw new Error('Comment is required');
+            throw new APIError(422, 'Comment is required');
         }
 
         if (!data.body) {
-            res.status(422);
-            throw new Error('Comment body is required');
+            throw new APIError(422, 'Comment body is required');
         }
 
         //Find for article
         const article = await Article.findByPk(slugInfo);
         if (!article) {
-            res.status(404);
-            throw new Error('Article not found');
+            throw new APIError(404, 'Article not found');
         }
 
         //Checking whthter this user has aldready posted a comment
@@ -49,22 +47,18 @@ module.exports.postNewComment = async (req, res) => {
 
         res.status(201).json({ newComment });
     } catch (e) {
-        const code = res.statusCode ? res.statusCode : 422;
-        return res.status(code).json({
-            errors: { body: ['Could not create article', e.message] }
-        });
+        next(e);
     }
 };
 
-module.exports.getAllComments = async (req, res) => {
+module.exports.getAllComments = async (req, res, next) => {
     try {
         const slugInfo = req.params.slug;
 
         //Find for article
         const article = await Article.findByPk(slugInfo);
         if (!article) {
-            res.status(404);
-            throw new Error('Article Slug not valid');
+            throw new APIError(404, 'Article slug not valid');
         }
 
         const comments = await Comment.findAll({
@@ -79,46 +73,37 @@ module.exports.getAllComments = async (req, res) => {
             ]
         });
 
-        res.status(201).json({ comments });
+        res.status(200).json({ comments });
     } catch (e) {
-        const code = res.statusCode ? res.statusCode : 422;
-        return res.status(code).json({
-            errors: { body: ['Could not create article', e.message] }
-        });
+        next(e);
     }
 };
 
-module.exports.deleteComment = async (req, res) => {
+module.exports.deleteComment = async (req, res, next) => {
     try {
         const slugInfo = req.params.slug;
         const idInfo = req.params.id;
         //Find for article
         const article = await Article.findByPk(slugInfo);
         if (!article) {
-            res.status(404);
-            throw new Error('Article not found');
+            throw new APIError(404, 'Article not found');
         }
 
         //Find for comment
         const comment = await Comment.findByPk(idInfo);
         if (!comment) {
-            res.status(404);
-            throw new Error('Comment not found');
+            throw new APIError(404, 'Comment not found');
         }
 
         //Check whether logged in user is the author of that comment
         if (req.user.email != comment.UserEmail) {
-            res.status(403);
-            throw new Error('You must be the author to modify this comment');
+            throw new APIError(403, 'You must be the author to modify this comment');
         }
 
         //Delete comment
         await Comment.destroy({ where: { id: idInfo } });
         res.status(200).json({ message: 'Comment deleted successfully' });
     } catch (e) {
-        const code = res.statusCode ? res.statusCode : 422;
-        return res.status(code).json({
-            errors: { body: ['Could not create article', e.message] }
-        });
+        next(e);
     }
 };

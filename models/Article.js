@@ -1,5 +1,7 @@
 const { DataTypes } = require('sequelize');
-const sequelize = require('../dbConnection');
+const sequelize = require('../database');
+const Tag = require('./Tag');
+const Comment = require('./Comments');
 
 const Article = sequelize.define('Article', {
     slug: {
@@ -17,23 +19,17 @@ const Article = sequelize.define('Article', {
     body: {
         type: DataTypes.TEXT,
         allowNull: false
+    },
+    isMatureContent: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: false
     }
 });
 
-module.exports = Article;
+Article.belongsToMany(Tag, { through: 'TagList', uniqueKey: false, timestamps: false });
+Tag.belongsToMany(Article, { through: 'TagList', uniqueKey: false, timestamps: false });
 
-/* {
-  "article": {
-    
-    
-    "tagList": ["dragons", "training"],
-    "favorited": false,
-    "favoritesCount": 0,
-    "author": {
-      "username": "jake",
-      "bio": "I work at statefarm",
-      "image": "https://i.stack.imgur.com/xHWG8.jpg",
-      "following": false
-    }
-  }
-} */
+Article.hasMany(Comment, { onDelete: 'CASCADE' });
+Comment.belongsTo(Article);
+
+module.exports = Article;
